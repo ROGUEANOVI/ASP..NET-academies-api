@@ -1,5 +1,5 @@
 ﻿using Academies.Api.Models;
-using Academies.Api.Models.Dtos;
+using Academies.Api.Models.Dtos.SchoolDtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +23,11 @@ namespace Academies.Api.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<IEnumerable<SchoolDto>> GetAll()
+        public async Task<ActionResult<IEnumerable<SchoolDto>>> GetAll()
         {
             _logger.LogInformation("Obtener las escuelas");
 
-            return Ok(_dbContext.Schools.ToList());
+            return Ok(await _dbContext.Schools.ToListAsync());
         }
 
 
@@ -35,7 +35,7 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<SchoolDto> Get(int id)
+        public async Task<ActionResult<SchoolDto>> Get(int id)
         {
             if (id == 0) 
             {
@@ -43,7 +43,7 @@ namespace Academies.Api.Controllers
                 return BadRequest();
             }
 
-            var school = _dbContext.Schools.FirstOrDefault(s => s.Id ==id);
+            var school = await _dbContext.Schools.FirstOrDefaultAsync(s => s.Id ==id);
             
             if (school == null)
             {
@@ -58,14 +58,14 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<SchoolDto> Create([FromBody] SchoolDto schoolDto)
+        public async Task<ActionResult<SchoolDto>> Create([FromBody] CreateSchoolDto schoolDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var schoolExists = _dbContext.Schools.FirstOrDefault(s => s.Name.ToLower() == schoolDto.Name.ToLower());
+            var schoolExists = await _dbContext.Schools.FirstOrDefaultAsync(s => s.Name.ToLower() == schoolDto.Name.ToLower());
             if (schoolExists != null)   
             {
                 ModelState.AddModelError("Nombre Existente", $"Ya existe una escuela con el nombre {schoolDto.Name}");
@@ -77,10 +77,7 @@ namespace Academies.Api.Controllers
                 return BadRequest(schoolDto);
             }
 
-            if (schoolDto.Id > 0) 
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError); 
-            }
+
 
             School schoolModel = new School()
             {
@@ -90,17 +87,17 @@ namespace Academies.Api.Controllers
                 Phone = schoolDto.Phone
             };
 
-            _dbContext.Add(schoolModel);
-            _dbContext.SaveChanges();
+            await _dbContext.AddAsync(schoolModel);
+            await _dbContext.SaveChangesAsync();
 
-            return CreatedAtRoute("GetSchoolById", new { id = schoolDto.Id}, schoolDto);
+            return CreatedAtRoute("GetSchoolById", new { id = schoolModel.Id}, schoolModel);
         }
 
 
         [HttpPut("{id:int}")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult Update(int id, [FromBody] SchoolDto schoolDto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateSchoolDto schoolDto)
         { 
             if ((schoolDto == null) || (id  != schoolDto.Id))
             {
@@ -117,7 +114,7 @@ namespace Academies.Api.Controllers
             };
 
             _dbContext.Update(schoolModel);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
 
@@ -126,18 +123,18 @@ namespace Academies.Api.Controllers
         [HttpPatch("{id:int}")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult UpdatePartial(int id, JsonPatchDocument<SchoolDto> patchDto)
+        public async Task<IActionResult> UpdatePartial(int id, JsonPatchDocument<UpdateSchoolDto> patchDto)
         {
             if ((patchDto == null) || (id == 0))
             {
                 return BadRequest();
             }
 
-            var school = _dbContext.Schools.AsNoTracking().FirstOrDefault(s => s.Id == id);
+            var school = await _dbContext.Schools.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
 
             if(school == null) return BadRequest();
 
-            SchoolDto schoolDto = new()
+            UpdateSchoolDto schoolDto = new()
             {
                 Id = school.Id,
                 Name = school.Name,
@@ -158,7 +155,7 @@ namespace Academies.Api.Controllers
             };
 
             _dbContext.Schools.Update(schoolModel);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
         }
@@ -168,14 +165,14 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult Remove(int id)
+        public async Task<IActionResult> Remove(int id)
         {
             if (id == 0)
             {
                 return BadRequest();
             }
 
-            var school = _dbContext.Schools.FirstOrDefault(s => s.Id == id);
+            var school = await _dbContext.Schools.FirstOrDefaultAsync(s => s.Id == id);
             
             if (school == null)
             {
@@ -183,7 +180,7 @@ namespace Academies.Api.Controllers
             }
 
             _dbContext.Schools.Remove(school);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
         }

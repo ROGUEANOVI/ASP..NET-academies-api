@@ -1,9 +1,10 @@
-﻿using Academies.Api.Models.Dtos;
+﻿using Academies.Api.Models.Dtos.TeacherDtos;
 using Academies.Api.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Academies.Api.Controllers
 {
@@ -11,21 +12,22 @@ namespace Academies.Api.Controllers
     [ApiController]
     public class TeacherController : ControllerBase
     {
-        private readonly ILogger<SchoolController> _logger;
+        private readonly ILogger<TeacherController> _logger;
         private readonly ACADEMIES_DBContext _dbContext;
-        public TeacherController(ILogger<SchoolController> logger, ACADEMIES_DBContext dbContext)
+        public TeacherController(ILogger<TeacherController> logger, ACADEMIES_DBContext dbContext)
         {
             _logger = logger;
             _dbContext = dbContext;
         }
 
+
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<IEnumerable<TeacherDto>> GetAll()
+        public  async Task<ActionResult<IEnumerable<TeacherDto>>> GetAll()
         {
             _logger.LogInformation("Obtener todos los profesores");
 
-            return Ok(_dbContext.Teachers.ToList());
+            return Ok(await _dbContext.Teachers.ToListAsync());
         }
 
 
@@ -33,7 +35,7 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<TeacherDto> Get(int id)
+        public async Task<ActionResult<TeacherDto>> Get(int id)
         {
             if (id == 0)
             {
@@ -41,7 +43,7 @@ namespace Academies.Api.Controllers
                 return BadRequest();
             }
 
-            var teacher = _dbContext.Teachers.FirstOrDefault(s => s.Id == id);
+            var teacher = await _dbContext.Teachers.FirstOrDefaultAsync(s => s.Id == id);
 
             if (teacher == null)
             {
@@ -56,14 +58,14 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<SchoolDto> Create([FromBody] TeacherDto teacherDto)
+        public async Task<ActionResult<TeacherDto>> Create([FromBody] CreateTeacherDto teacherDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var teacherExists = _dbContext.Teachers.FirstOrDefault(s => (s.FirstName.ToLower() == teacherDto.FirstName.ToLower()) && (s.LastName.ToLower() == teacherDto.LastName.ToLower()) && (s.Email == teacherDto.Email));
+            var teacherExists = await _dbContext.Teachers.FirstOrDefaultAsync(s => (s.FirstName.ToLower() == teacherDto.FirstName.ToLower()) && (s.LastName.ToLower() == teacherDto.LastName.ToLower()) && (s.Email == teacherDto.Email));
             if (teacherExists != null)
             {
                 ModelState.AddModelError("Nombre Existente", $"Ya existe un profesor con estos datos registrados");
@@ -75,10 +77,7 @@ namespace Academies.Api.Controllers
                 return BadRequest(teacherDto);
             }
 
-            if (teacherDto.Id > 0)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
+
 
             Teacher teacherModel = new Teacher()
             {
@@ -89,17 +88,17 @@ namespace Academies.Api.Controllers
                 SchoolId = teacherDto.SchoolId
             };
 
-            _dbContext.Add(teacherModel);
-            _dbContext.SaveChanges();
+            await _dbContext.AddAsync(teacherModel);
+            await _dbContext.SaveChangesAsync();
 
-            return CreatedAtRoute("GetTeacherById", new { id = teacherDto.Id }, teacherDto);
+            return CreatedAtRoute("GetTeacherById", new { id = teacherModel.Id }, teacherModel);
         }
 
 
         [HttpPut("{id:int}")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult Update(int id, [FromBody] TeacherDto teacherDto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateTeacherDto teacherDto)
         {
             if ((teacherDto == null) || (id != teacherDto.Id))
             {
@@ -117,7 +116,7 @@ namespace Academies.Api.Controllers
             };
 
             _dbContext.Update(teacherModel);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
 
@@ -127,18 +126,18 @@ namespace Academies.Api.Controllers
         [HttpPatch("{id:int}")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult UpdatePartial(int id, JsonPatchDocument<TeacherDto> patchDto)
+        public async Task<IActionResult> UpdatePartial(int id, JsonPatchDocument<UpdateTeacherDto> patchDto)
         {
             if ((patchDto == null) || (id == 0))
             {
                 return BadRequest();
             }
 
-            var teacher = _dbContext.Teachers.AsNoTracking().FirstOrDefault(s => s.Id == id);
+            var teacher = await _dbContext.Teachers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
 
             if (teacher == null) return BadRequest();
 
-            TeacherDto teacherDto = new()
+            UpdateTeacherDto teacherDto = new()
             {
                 Id = teacher.Id,
                 FirstName = teacher.FirstName,
@@ -161,7 +160,7 @@ namespace Academies.Api.Controllers
             };
 
             _dbContext.Teachers.Update(teacherModel);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
         }
@@ -171,14 +170,14 @@ namespace Academies.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public IActionResult Remove(int id)
+        public async Task<IActionResult> Remove(int id)
         {
             if (id == 0)
             {
                 return BadRequest();
             }
 
-            var teacher = _dbContext.Teachers.FirstOrDefault(s => s.Id == id);
+            var teacher = await _dbContext.Teachers.FirstOrDefaultAsync(s => s.Id == id);
 
             if (teacher == null)
             {
@@ -186,7 +185,7 @@ namespace Academies.Api.Controllers
             }
 
             _dbContext.Teachers.Remove(teacher);
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync();
 
             return NoContent();
         }
